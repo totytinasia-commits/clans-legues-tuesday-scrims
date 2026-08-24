@@ -386,7 +386,7 @@ elif page == "Scrims 3":
     render_scrims_tables('547827980', "Scrims 3", s3_teams, s3_games, s3_overall)
 
 elif page == "Risultati Giocatore":
-    st.markdown("<h1 style='text-align: center;'>👤 Player Results</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center;'>👤 Player</h1>", unsafe_allow_html=True)
     st.write("---")
     
     df_player = load_data('1376346730')
@@ -434,7 +434,7 @@ elif page == "Risultati Giocatore":
 # ==========================================
 elif page == "PERSONAL STATS":
     st.markdown("<div style='background-color: #0e1117; border: 2px solid #262730; border-radius: 12px; padding: 20px;'>", unsafe_allow_html=True)
-    st.markdown("### 👤 Personal Stats Dashboard")
+    st.markdown("### 👤 Personal")
 
     # Inizializzazione sicura delle variabili
     target_ws = None
