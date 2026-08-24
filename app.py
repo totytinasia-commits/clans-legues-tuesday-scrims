@@ -172,7 +172,7 @@ def get_logo_html():
             try:
                 with open(path, "rb") as img_file:
                     encoded = base64.b64encode(img_file.read()).decode()
-                    return f'<img src="data:image/{ext};base64,{encoded}" style="height: 3.5rem; width: auto; vertical-align: middle; border-radius: 6px;">'
+                    return f'<img src="data:image/{ext};base64,{encoded}" style="height: 2.5rem; width: auto; vertical-align: middle; border-radius: 6px;">'
             except Exception:
                 pass
     return ""
@@ -183,7 +183,7 @@ with col_l2:
     st.markdown(f"""
         <div style="display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 15px; width: 100%;">
             {logo_html}
-            <h1 style='color: #fff; font-size: 2.8rem; margin: 0; line-height: 1; white-space: nowrap;'>CL TUESDAY SCRIMS</h1>
+            <h1 style='color: #fff; font-size: 1.8rem; margin: 0; line-height: 1; white-space: nowrap;'>CL TUESDAY SCRIMS</h1>
         </div>
     """, unsafe_allow_html=True)
 
