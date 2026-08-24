@@ -438,7 +438,7 @@ elif page == "PERSONAL STATS":
 
     # Inizializzazione sicura delle variabili
     target_ws = None
-    current_d13_val = ""
+    current_d12_val = ""
     extracted_players = []
 
     try:
@@ -449,10 +449,10 @@ elif page == "PERSONAL STATS":
             target_ws = next((ws for ws in sheet.worksheets() if str(ws.id).strip() == str(GID_PERSONAL_STATS).strip()), None)
             
             if target_ws:
-                # Legge il valore corrente dalla cella D13
-                d13_raw = target_ws.acell("D13").value
-                if d13_raw is not None and str(d13_raw).strip() != "":
-                    current_d13_val = str(d13_raw).strip()
+                # Legge il valore corrente dalla cella D12
+                d12_raw = target_ws.acell("D12").value
+                if d12_raw is not None and str(d12_raw).strip() != "":
+                    current_d12_val = str(d12_raw).strip()
                 
                 # Estrae la lista dei player dalla colonna C (C12:C60)
                 col_c_values = target_ws.get("C12:C60")
@@ -468,17 +468,17 @@ elif page == "PERSONAL STATS":
     if not extracted_players:
         extracted_players = ["No players available"]
 
-    # Selectbox unico per il Player configurato in D13
+    # Selectbox unico per il Player configurato in D12
     player_index = 0
-    if current_d13_val in extracted_players:
-        player_index = extracted_players.index(current_d13_val)
+    if current_d12_val in extracted_players:
+        player_index = extracted_players.index(current_d12_val)
 
-    selected_d13_val = st.selectbox("Select Player", extracted_players, index=player_index, key="sb_player_d13")
+    selected_d12_val = st.selectbox("Select Player", extracted_players, index=player_index, key="sb_player_d12")
     
-    # Se il player selezionato cambia, aggiorna D13
-    if str(selected_d13_val).strip().lower() != str(current_d13_val).strip().lower():
+    # Se il player selezionato cambia, aggiorna D12
+    if str(selected_d12_val).strip().lower() != str(current_d12_val).strip().lower():
         try:
-            scrivi_cella_per_gid(GID_PERSONAL_STATS, "D13", selected_d13_val)
+            scrivi_cella_per_gid(GID_PERSONAL_STATS, "D12", selected_d12_val)
         except Exception:
             pass
         st.rerun()
