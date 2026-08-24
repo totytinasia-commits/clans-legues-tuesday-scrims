@@ -10,7 +10,7 @@ st.set_page_config(page_title="CL Tuesday Scrims", layout="centered")
 
 # --- CONFIGURAZIONE GOOGLE SHEETS & CREDENZIALI ---
 SHEET_ID = '1_dKU_GF7gCvaulCoSwL0pTluw7o8MBJe9Pefiqtq3Zk'
-GID_PERSONAL_STATS = '327527248'
+GID_PERSONAL_STATS = '1111383455'  # ID corretto per Personal Stats
 
 def ottieni_credenziali():
     """Recupera le credenziali da st.secrets per gspread"""
@@ -157,14 +157,6 @@ st.markdown("""
         font-size: 1.1rem;
         font-weight: bold;
     }
-
-    /* Logo dimensionato esattamente quanto un titolo H1 grande */
-    .main-logo-container img {
-        display: block;
-        margin: 0 auto;
-        max-height: 2.5rem;
-        width: auto;
-    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -172,7 +164,7 @@ st.markdown("""
 if "page" not in st.session_state:
     st.session_state.page = "Leaderboard"
 
-# 4. Main Page Logo & Centered Title
+# 4. Main Page Logo & Centered Title (Grande, affiancato e allineato ai pulsanti)
 def get_logo_html():
     for ext in ["png", "jpg", "jpeg", "webp"]:
         path = f"logo.{ext}"
@@ -188,13 +180,14 @@ def get_logo_html():
 col_l1, col_l2, col_l3 = st.columns([0.05, 3.9, 0.05])
 with col_l2:
     logo_html = get_logo_html()
-    
     st.markdown(f"""
         <div style="display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 15px; width: 100%;">
             {logo_html}
             <h1 style='color: #fff; font-size: 2.8rem; margin: 0; line-height: 1; white-space: nowrap;'>CL TUESDAY SCRIMS</h1>
         </div>
     """, unsafe_allow_html=True)
+
+st.write("---")
 
 # 5. Navigation Buttons
 if st.button("🏆 Leaderboard", use_container_width=True):
@@ -437,40 +430,50 @@ elif page == "Risultati Giocatore":
         st.error(f"Error loading Lobby 3 Player Data: {e}")
 
 # ==========================================
-# --- SEZIONE: PERSONAL STATS ---
+# --- SEZIONE: PERSONAL STATS (OTTIMIZZATA) ---
 # ==========================================
 elif page == "PERSONAL STATS":
     st.markdown("<div style='background-color: #0e1117; border: 2px solid #262730; border-radius: 12px; padding: 20px;'>", unsafe_allow_html=True)
     st.markdown("### 👤 Personal Stats Dashboard")
 
-    target_ws = None
-    current_d13_val = ""
-    extracted_players = []
-
-    try:
+    @st.cache_resource(ttl=300)
+    def get_gspread_client():
         creds = ottieni_credenziali()
         if creds:
-            client = gspread.authorize(creds)
-            sheet = client.open_by_key(SHEET_ID)
-            target_ws = next((ws for ws in sheet.worksheets() if str(ws.id).strip() == str(GID_PERSONAL_STATS).strip()), None)
-            
-            if target_ws:
-                d13_raw = target_ws.acell("D13").value
-                if d13_raw is not None and str(d13_raw).strip() != "":
-                    current_d13_val = str(d13_raw).strip()
-                
-                col_c_values = target_ws.get("C12:C60")
-                for row in col_c_values:
-                    if row and len(row) > 0:
-                        p = str(row[0]).strip()
-                        if p and p.lower() not in ["nan", "none", ""]:
-                            extracted_players.append(p)
-                extracted_players = list(dict.fromkeys(extracted_players))
-    except Exception as e:
-        st.warning(f"Error reading initial Personal Stats sheet: {e}")
+            return gspread.authorize(creds)
+        return None
 
-    if not extracted_players:
-        extracted_players = ["No players available"]
+    @st.cache_data(ttl=60)
+    def fetch_personal_stats_data():
+        try:
+            client = get_gspread_client()
+            if client:
+                sheet = client.open_by_key(SHEET_ID)
+                target_ws = next((ws for ws in sheet.worksheets() if str(ws.id).strip() == str(GID_PERSONAL_STATS).strip()), None)
+                if target_ws:
+                    d13_val = target_ws.acell("D13").value
+                    col_c_values = target_ws.get("C12:C60")
+                    players = []
+                    for row in col_c_values:
+                        if row and len(row) > 0:
+                            p = str(row[0]).strip()
+                            if p and p.lower() not in ["nan", "none", ""]:
+                                players.append(p)
+                    players = list(dict.fromkeys(players))
+                    
+                    f16_l16 = target_ws.get("F16:L16")
+                    j18_l18 = target_ws.get("J18:L18")
+                    h20_l21 = target_ws.get("H20:L21")
+                    weapons_raw = target_ws.get("F27:L67")
+                    
+                    return d13_val, players, f16_l16, j18_l18, h20_l21, weapons_raw
+        except Exception as e:
+            st.warning(f"Errore caricamento dati foglio: {e}")
+        return "", [], [], [], [], []
+
+    data_loaded = fetch_personal_stats_data()
+    current_d13_val = str(data_loaded[0]).strip() if data_loaded[0] else ""
+    extracted_players = data_loaded[1] if data_loaded[1] else ["No players available"]
 
     player_index = 0
     if current_d13_val in extracted_players:
@@ -480,12 +483,8 @@ elif page == "PERSONAL STATS":
     
     if str(selected_d13_val).strip().lower() != str(current_d13_val).strip().lower():
         scrivi_cella_per_gid(GID_PERSONAL_STATS, "D13", selected_d13_val)
+        st.cache_data.clear()
         st.rerun()
-
-    with st.spinner("Updating data..."):
-        time.sleep(0.2)
-
-    st.markdown("---")
 
     def format_val(val, is_percentage=False, decimals=2):
         try:
@@ -510,48 +509,47 @@ elif page == "PERSONAL STATS":
     weapon_rows_data = []
 
     try:
-        if target_ws:
-            f16_l16 = target_ws.get("F16:L16")
-            if f16_l16 and len(f16_l16) > 0:
-                row_vals = f16_l16[0]
-                summary_fired = format_val(row_vals[0] if len(row_vals) > 0 else 0)
-                summary_hit = format_val(row_vals[1] if len(row_vals) > 1 else 0)
-                summary_acc = format_val(row_vals[2] if len(row_vals) > 2 else 0, is_percentage=True)
-                summary_kill = format_val(row_vals[3] if len(row_vals) > 3 else 0)
-                summary_dmg = format_val(row_vals[4] if len(row_vals) > 4 else 0)
-                summary_mvp = format_val(row_vals[5] if len(row_vals) > 5 else 0)
-                summary_death = format_val(row_vals[6] if len(row_vals) > 6 else 0)
+        f16_l16 = data_loaded[2]
+        if f16_l16 and len(f16_l16) > 0:
+            row_vals = f16_l16[0]
+            summary_fired = format_val(row_vals[0] if len(row_vals) > 0 else 0)
+            summary_hit = format_val(row_vals[1] if len(row_vals) > 1 else 0)
+            summary_acc = format_val(row_vals[2] if len(row_vals) > 2 else 0, is_percentage=True)
+            summary_kill = format_val(row_vals[3] if len(row_vals) > 3 else 0)
+            summary_dmg = format_val(row_vals[4] if len(row_vals) > 4 else 0)
+            summary_mvp = format_val(row_vals[5] if len(row_vals) > 5 else 0)
+            summary_death = format_val(row_vals[6] if len(row_vals) > 6 else 0)
 
-            j18_l18 = target_ws.get("J18:L18")
-            if j18_l18 and len(j18_l18) > 0 and len(j18_l18[0]) > 0:
-                faster_banana_val = format_val(j18_l18[0][0])
+        j18_l18 = data_loaded[3]
+        if j18_l18 and len(j18_l18) > 0 and len(j18_l18[0]) > 0:
+            faster_banana_val = format_val(j18_l18[0][0])
 
-            h20_l21 = target_ws.get("H20:L21")
-            if h20_l21 and len(h20_l21) > 0:
-                raw_w = h20_l21[0][0] if len(h20_l21[0]) > 0 else "-"
-                deadliest_w = str(raw_w).strip() if raw_w and str(raw_w).strip().lower() not in ["nan", "none", ""] else "-"
-                
-                if len(h20_l21) > 1:
-                    deadliest_d = format_val(h20_l21[1][3] if len(h20_l21[1]) > 3 else 0)
-                    deadliest_a = format_val(h20_l21[1][4] if len(h20_l21[1]) > 4 else 0, is_percentage=True)
+        h20_l21 = data_loaded[4]
+        if h20_l21 and len(h20_l21) > 0:
+            raw_w = h20_l21[0][0] if len(h20_l21[0]) > 0 else "-"
+            deadliest_w = str(raw_w).strip() if raw_w and str(raw_w).strip().lower() not in ["nan", "none", ""] else "-"
+            
+            if len(h20_l21) > 1:
+                deadliest_d = format_val(h20_l21[1][3] if len(h20_l21[1]) > 3 else 0)
+                deadliest_a = format_val(h20_l21[1][4] if len(h20_l21[1]) > 4 else 0, is_percentage=True)
 
-            weapons_raw = target_ws.get("F27:L67")
-            if weapons_raw:
-                for r_data in weapons_raw:
-                    if r_data and len(r_data) > 0:
-                        w_name = str(r_data[0]).strip()
-                        if w_name and w_name.upper() not in ["NAN", "NONE", ""]:
-                            weapon_rows_data.append({
-                                "WEAPON": w_name,
-                                "TOT SHOTS": format_val(r_data[1] if len(r_data) > 1 else 0, is_percentage=False),
-                                "SHOT HIT": format_val(r_data[2] if len(r_data) > 2 else 0, is_percentage=False),
-                                "ACC%": format_val(r_data[3] if len(r_data) > 3 else 0, is_percentage=True),
-                                "DMG": format_val(r_data[4] if len(r_data) > 4 else 0, is_percentage=False),
-                                "HEADSHOT": format_val(r_data[5] if len(r_data) > 5 else 0, is_percentage=False),
-                                "MAX DISTANCE": format_val(r_data[6] if len(r_data) > 6 else 0, is_percentage=False)
-                            })
+        weapons_raw = data_loaded[5]
+        if weapons_raw:
+            for r_data in weapons_raw:
+                if r_data and len(r_data) > 0:
+                    w_name = str(r_data[0]).strip()
+                    if w_name and w_name.upper() not in ["NAN", "NONE", ""]:
+                        weapon_rows_data.append({
+                            "WEAPON": w_name,
+                            "TOT SHOTS": format_val(r_data[1] if len(r_data) > 1 else 0, is_percentage=False),
+                            "SHOT HIT": format_val(r_data[2] if len(r_data) > 2 else 0, is_percentage=False),
+                            "ACC%": format_val(r_data[3] if len(r_data) > 3 else 0, is_percentage=True),
+                            "DMG": format_val(r_data[4] if len(r_data) > 4 else 0, is_percentage=False),
+                            "HEADSHOT": format_val(r_data[5] if len(r_data) > 5 else 0, is_percentage=False),
+                            "MAX DISTANCE": format_val(r_data[6] if len(r_data) > 6 else 0, is_percentage=False)
+                        })
     except Exception as e:
-        st.warning(f"Error reading dashboard data: {e}")
+        st.warning(f"Error parsing dashboard data: {e}")
 
     st.markdown("<h4 style='color: #93c5fd; font-size: 1rem;'>MATCH SUMMARY</h4>", unsafe_allow_html=True)
     c_grid1, c_grid2, c_grid3 = st.columns(3)
