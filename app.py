@@ -455,7 +455,7 @@ elif page == "PERSONAL STATS":
                     current_d13_val = str(d13_raw).strip()
                 
                 # Estrae la lista dei player dalla colonna C (C12:C60)
-                col_c_values = target_ws.get("C12:C60")
+                col_c_values = target_ws.get("C12:C90")
                 for row in col_c_values:
                     if row and len(row) > 0:
                         p = str(row[0]).strip()
