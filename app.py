@@ -245,7 +245,7 @@ def render_ranking_table(df_sub, headers):
 
 # General function to render Scrims tables
 def render_scrims_tables(gid, scrim_subtitle, team_coords, game_coords_list, overall_coords):
-    st.markdown(f"<h1 style='text-align: center;'>⚔️ Scrims Tuesday - {scrim_subtitle}</h1>", unsafe_allow_html=True)
+    st.markdown(f"<h1 style='text-align: center;'>⚔️- {scrim_subtitle}</h1>", unsafe_allow_html=True)
     st.write("---")
     
     df = load_data(gid)
@@ -332,7 +332,7 @@ if page == "Leaderboard":
         st.error(f"Error Lobby 3 Data: {e}")
 
 elif page == "System Score":
-    st.markdown("<h1 style='text-align: center;'>📊 System Score</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center;'>📊Score</h1>", unsafe_allow_html=True)
     st.write("---")
     
     scoring_html = """
