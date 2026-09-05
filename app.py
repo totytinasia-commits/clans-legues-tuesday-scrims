@@ -549,7 +549,7 @@ elif page == "PERSONAL STATS":
                         total_assist_val = format_val(v_str)
                         break
 
-            # 3. Deadliest Weapons (Configurazioni mirate per Nome Arma e Dati)
+            # 3. Deadliest Weapons
             dw_configs = [
                 {"name_range": "H20:I20", "data_range": "H21:S21"},
                 {"name_range": "H23:I23", "data_range": "H24:S24"},
@@ -572,12 +572,12 @@ elif page == "PERSONAL STATS":
                     r_w = r_data[0]
                     deadliest_weapons.append({
                         "name": w_name,
-                        "dmg": format_val(r_w[3] if len(r_w) > 3 else 0),          
+                        "dmg": format_val(r_w[3] if len(r_w) > 3 else 0),  
                         "acc": format_val(r_w[4] if len(r_w) > 4 else 0, is_percentage=True), 
-                        "onehand": format_val(r_w[6] if len(r_w) > 6 else 0),      
+                        "onehand": format_val(r_w[6] if len(r_w) > 6 else 0),   
                         "shit_onehand": format_val(r_w[7] if len(r_w) > 7 else 0),
                         "acc_onehand": format_val(r_w[8] if len(r_w) > 8 else 0, is_percentage=True), 
-                        "twohand": format_val(r_w[9] if len(r_w) > 9 else 0),    
+                        "twohand": format_val(r_w[9] if len(r_w) > 9 else 0),   
                         "shit_twohand": format_val(r_w[10] if len(r_w) > 10 else 0),
                         "acc_twohand": format_val(r_w[11] if len(r_w) > 11 else 0, is_percentage=True)  
                     })
@@ -613,32 +613,25 @@ elif page == "PERSONAL STATS":
     except Exception as e:
         st.warning(f"Error reading dashboard data: {e}")
 
-    # --- RENDER UI: MATCH SUMMARY ---
+    # --- RENDER UI: MATCH SUMMARY (A righe fisse per un perfetto allineamento mobile) ---
     st.markdown("<h4 style='color: #93c5fd; font-size: 1rem;'>MATCH SUMMARY</h4>", unsafe_allow_html=True)
-    c_grid1, c_grid2, c_grid3 = st.columns(3)
     
-    with c_grid1:
-        st.markdown(f"<div class='stat-card'><div class='stat-label'>DMG</div><div class='stat-value'>{summary_dmg}</div></div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='stat-card'><div class='stat-label'>SHOTS FIRED</div><div class='stat-value'>{summary_fired}</div></div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='stat-card'><div class='stat-label'>DEATH</div><div class='stat-value'>{summary_death}</div></div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='stat-card'><div class='stat-label'>ONEHAND SHOTS</div><div class='stat-value'>{summary_oh_shots}</div></div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='stat-card'><div class='stat-label'>TWOHAND SHOTS</div><div class='stat-value'>{summary_th_shots}</div></div>", unsafe_allow_html=True)
+    def render_metric_row(m1, m2, m3):
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.markdown(f"<div class='stat-card'><div class='stat-label'>{m1[0]}</div><div class='stat-value'>{m1[1]}</div></div>", unsafe_allow_html=True)
+        with col2:
+            st.markdown(f"<div class='stat-card'><div class='stat-label'>{m2[0]}</div><div class='stat-value'>{m2[1]}</div></div>", unsafe_allow_html=True)
+        with col3:
+            st.markdown(f"<div class='stat-card'><div class='stat-label'>{m3[0]}</div><div class='stat-value'>{m3[1]}</div></div>", unsafe_allow_html=True)
 
-    with c_grid2:
-        st.markdown(f"<div class='stat-card'><div class='stat-label'>KILL</div><div class='stat-value'>{summary_kill}</div></div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='stat-card'><div class='stat-label'>SHOTS HIT</div><div class='stat-value'>{summary_hit}</div></div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='stat-card'><div class='stat-label'>REVIVE</div><div class='stat-value'>{summary_revive}</div></div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='stat-card'><div class='stat-label'>ONEHAND HIT</div><div class='stat-value'>{summary_oh_hit}</div></div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='stat-card'><div class='stat-label'>TWOHAND HIT</div><div class='stat-value'>{summary_th_hit}</div></div>", unsafe_allow_html=True)
+    render_metric_row(("DMG", summary_dmg), ("KILL", summary_kill), ("MVP", summary_mvp))
+    render_metric_row(("SHOTS FIRED", summary_fired), ("SHOTS HIT", summary_hit), ("ACCURACY", summary_acc))
+    render_metric_row(("DEATH", summary_death), ("REVIVE", summary_revive), ("FASTER BANANA", faster_banana_val))
+    render_metric_row(("ONEHAND SHOTS", summary_oh_shots), ("ONEHAND HIT", summary_oh_hit), ("ONEHAND ACC%", summary_oh_acc))
+    render_metric_row(("TWOHAND SHOTS", summary_th_shots), ("TWOHAND HIT", summary_th_hit), ("TWOHAND ACC%", summary_th_acc))
 
-    with c_grid3:
-        st.markdown(f"<div class='stat-card'><div class='stat-label'>MVP</div><div class='stat-value'>{summary_mvp}</div></div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='stat-card'><div class='stat-label'>ACCURACY</div><div class='stat-value'>{summary_acc}</div></div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='stat-card'><div class='stat-label'>FASTER BANANA</div><div class='stat-value'>{faster_banana_val}</div></div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='stat-card'><div class='stat-label'>ONEHAND ACC%</div><div class='stat-value'>{summary_oh_acc}</div></div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='stat-card'><div class='stat-label'>TWOHAND ACC%</div><div class='stat-value'>{summary_th_acc}</div></div>", unsafe_allow_html=True)
-
-    # --- RENDER UI: TOTAL ASSIST (Full-width card inserita prima di Deadliest) ---
+    # --- RENDER UI: TOTAL ASSIST ---
     st.markdown(f"""
     <div class='stat-card' style='width: 100%; height: 85px; margin-top: 10px;'>
         <div class='stat-label'>TOTAL ASSIST</div>
