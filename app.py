@@ -434,7 +434,7 @@ elif page == "Risultati Giocatore":
 # ==========================================
 elif page == "PERSONAL STATS":
     st.markdown("<div style='background-color: #0e1117; border: 2px solid #262730; border-radius: 12px; padding: 20px;'>", unsafe_allow_html=True)
-    st.markdown("### 👤 Personal")
+    st.markdown("### 👤 Personal Stats Dashboard")
 
     # Inizializzazione sicura delle variabili
     target_ws = None
@@ -455,7 +455,7 @@ elif page == "PERSONAL STATS":
                     current_d13_val = str(d13_raw).strip()
                 
                 # Estrae la lista dei player dalla colonna C (C12:C60)
-                col_c_values = target_ws.get("C12:C90")
+                col_c_values = target_ws.get("C12:C60")
                 for row in col_c_values:
                     if row and len(row) > 0:
                         p = str(row[0]).strip()
@@ -475,12 +475,9 @@ elif page == "PERSONAL STATS":
 
     selected_d13_val = st.selectbox("Select Player", extracted_players, index=player_index, key="sb_player_d13")
     
-    # Se il player selezionato cambia, aggiorna D13
+    # Se il player selezionato cambia, aggiorna la cella D13 su Google Sheets e ricarica
     if str(selected_d13_val).strip().lower() != str(current_d13_val).strip().lower():
-        try:
-            scrivi_cella_per_gid(GID_PERSONAL_STATS, "D13", selected_d13_val)
-        except Exception:
-            pass
+        scrivi_cella_per_gid(GID_PERSONAL_STATS, "D13", selected_d13_val)
         st.rerun()
 
     with st.spinner("Updating data..."):
@@ -490,7 +487,7 @@ elif page == "PERSONAL STATS":
 
     def format_val(val, is_percentage=False, decimals=2):
         try:
-            if val is None or str(val).strip() == "" or str(val).strip().lower() in ["nan", "none", "#n/a", "#valore!", "#ref!"]:
+            if val is None or str(val).strip() == "" or str(val).strip().lower() in ["nan", "none", "#n/a", "#valore!"]:
                 return "0.00%" if is_percentage else "0"
             clean_val = str(val).replace("%", "").strip().replace(",", ".")
             num = float(clean_val)
@@ -505,42 +502,86 @@ elif page == "PERSONAL STATS":
         except Exception:
             return str(val) if val is not None and str(val).strip() != "" else ("0.00%" if is_percentage else "0")
 
+    # Inizializzazione variabili Match Summary (14 campi totali)
     summary_fired, summary_hit, summary_acc, summary_kill, summary_dmg, summary_mvp, summary_death = "0", "0", "0.00%", "0", "0", "0", "0"
+    summary_revive, summary_oh_shots, summary_oh_hit, summary_oh_acc = "0", "0", "0", "0.00%"
+    summary_th_shots, summary_th_hit, summary_th_acc = "0", "0", "0.00%"
+    
     faster_banana_val = "-"
-    deadliest_w, deadliest_d, deadliest_a = "-", "0", "0.00%"
+    
+    deadliest_weapons = []
     weapon_rows_data = []
 
     try:
         if target_ws:
-            # 1. Match Summary (Riga 16)
-            f16_l16 = target_ws.get("F16:L16")
-            if f16_l16 and len(f16_l16) > 0:
-                row_vals = f16_l16[0]
-                summary_fired = format_val(row_vals[0] if len(row_vals) > 0 else 0)
-                summary_hit = format_val(row_vals[1] if len(row_vals) > 1 else 0)
-                summary_acc = format_val(row_vals[2] if len(row_vals) > 2 else 0, is_percentage=True)
-                summary_kill = format_val(row_vals[3] if len(row_vals) > 3 else 0)
-                summary_dmg = format_val(row_vals[4] if len(row_vals) > 4 else 0)
-                summary_mvp = format_val(row_vals[5] if len(row_vals) > 5 else 0)
-                summary_death = format_val(row_vals[6] if len(row_vals) > 6 else 0)
+            # 1. Match Summary (Riga 16, da F16 a S16)
+            f16_s16 = target_ws.get("F16:S16")
+            if f16_s16 and len(f16_s16) > 0:
+                rv = f16_s16[0]
+                summary_fired   = format_val(rv[0] if len(rv) > 0 else 0)
+                summary_hit     = format_val(rv[1] if len(rv) > 1 else 0)
+                summary_acc     = format_val(rv[2] if len(rv) > 2 else 0, is_percentage=True)
+                summary_kill    = format_val(rv[3] if len(rv) > 3 else 0)
+                summary_dmg     = format_val(rv[4] if len(rv) > 4 else 0)
+                summary_mvp     = format_val(rv[5] if len(rv) > 5 else 0)
+                summary_death   = format_val(rv[6] if len(rv) > 6 else 0)
+                summary_revive  = format_val(rv[7] if len(rv) > 7 else 0)
+                summary_oh_shots= format_val(rv[8] if len(rv) > 8 else 0)
+                summary_oh_hit  = format_val(rv[9] if len(rv) > 9 else 0)
+                summary_oh_acc  = format_val(rv[10] if len(rv) > 10 else 0, is_percentage=True)
+                summary_th_shots= format_val(rv[11] if len(rv) > 11 else 0)
+                summary_th_hit  = format_val(rv[12] if len(rv) > 12 else 0)
+                summary_th_acc  = format_val(rv[13] if len(rv) > 13 else 0, is_percentage=True)
 
             # 2. Faster Banana (Riga 18)
             j18_l18 = target_ws.get("J18:L18")
             if j18_l18 and len(j18_l18) > 0 and len(j18_l18[0]) > 0:
                 faster_banana_val = format_val(j18_l18[0][0])
 
-            # 3. Deadliest Weapon (Righe 20-21)
-            h20_l21 = target_ws.get("H20:L21")
-            if h20_l21 and len(h20_l21) > 0:
-                raw_w = h20_l21[0][0] if len(h20_l21[0]) > 0 else "-"
-                deadliest_w = str(raw_w).strip() if raw_w and str(raw_w).strip().lower() not in ["nan", "none", ""] else "-"
-                
-                if len(h20_l21) > 1:
-                    deadliest_d = format_val(h20_l21[1][3] if len(h20_l21[1]) > 3 else 0)
-                    deadliest_a = format_val(h20_l21[1][4] if len(h20_l21[1]) > 4 else 0, is_percentage=True)
+            # 3. Deadliest Weapons (Configurazioni mirate per Nome Arma e Dati)
+            dw_configs = [
+                {"name_range": "H20:I20", "data_range": "H21:S21"},
+                {"name_range": "H23:I23", "data_range": "H24:S24"},
+                {"name_range": "H26:I26", "data_range": "H27:S27"}
+            ]
 
-            # 4. Tabella Armi
-            weapons_raw = target_ws.get("F27:L68")
+            for cfg in dw_configs:
+                # Legge il nome dell'arma
+                n_data = target_ws.get(cfg["name_range"])
+                w_name = "-"
+                if n_data and len(n_data) > 0:
+                    row_n = n_data[0]
+                    for cell in row_n:
+                        val_str = str(cell).strip()
+                        if val_str and val_str.lower() not in ["nan", "none", ""]:
+                            w_name = val_str
+                            break
+
+                # Legge i dati dell'arma
+                r_data = target_ws.get(cfg["data_range"])
+                if r_data and len(r_data) > 0:
+                    r_w = r_data[0]
+                    # H=col 0, I=1, J=2, K=3 (DMG), L=4 (ACC%), M=5, N=6 (Onehand), O=7 (Shit Onehand), P=8 (Acc One), Q=9 (Tohand), R=10 (Shit Tohand), S=11 (Acc Two)
+                    deadliest_weapons.append({
+                        "name": w_name,
+                        "dmg": format_val(r_w[3] if len(r_w) > 3 else 0),          # K
+                        "acc": format_val(r_w[4] if len(r_w) > 4 else 0, is_percentage=True), # L
+                        "onehand": format_val(r_w[6] if len(r_w) > 6 else 0),      # N
+                        "shit_onehand": format_val(r_w[7] if len(r_w) > 7 else 0),# O
+                        "acc_onehand": format_val(r_w[8] if len(r_w) > 8 else 0, is_percentage=True), # P
+                        "twohand": format_val(r_w[9] if len(r_w) > 9 else 0),    # Q
+                        "shit_twohand": format_val(r_w[10] if len(r_w) > 10 else 0),# R
+                        "acc_twohand": format_val(r_w[11] if len(r_w) > 11 else 0, is_percentage=True)  # S
+                    })
+                else:
+                    deadliest_weapons.append({
+                        "name": w_name, "dmg": "0", "acc": "0.00%", 
+                        "onehand": "0", "shit_onehand": "0", "acc_onehand": "0.00%", 
+                        "twohand": "0", "shit_twohand": "0", "acc_twohand": "0.00%"
+                    })
+
+            # 4. Tabella Armi aggiornata all'intervallo F33:S74
+            weapons_raw = target_ws.get("F33:S74")
             if weapons_raw:
                 for r_data in weapons_raw:
                     if r_data and len(r_data) > 0:
@@ -548,50 +589,103 @@ elif page == "PERSONAL STATS":
                         if w_name and w_name.upper() not in ["NAN", "NONE", ""]:
                             weapon_rows_data.append({
                                 "WEAPON": w_name,
-                                "TOT SHOTS": format_val(r_data[1] if len(r_data) > 1 else 0, is_percentage=False),
-                                "SHOT HIT": format_val(r_data[2] if len(r_data) > 2 else 0, is_percentage=False),
+                                "TOT SHOTS": format_val(r_data[1] if len(r_data) > 1 else 0),
+                                "SHOT HIT": format_val(r_data[2] if len(r_data) > 2 else 0),
                                 "ACC%": format_val(r_data[3] if len(r_data) > 3 else 0, is_percentage=True),
-                                "DMG": format_val(r_data[4] if len(r_data) > 4 else 0, is_percentage=False),
-                                "HEADSHOT": format_val(r_data[5] if len(r_data) > 5 else 0, is_percentage=False),
-                                "MAX DISTANCE": format_val(r_data[6] if len(r_data) > 6 else 0, is_percentage=False)
+                                "DMG": format_val(r_data[4] if len(r_data) > 4 else 0),
+                                "HEADSHOT": format_val(r_data[5] if len(r_data) > 5 else 0),
+                                "MAX DISTANCE": format_val(r_data[6] if len(r_data) > 6 else 0),
+                                "SHOT ONE": format_val(r_data[8] if len(r_data) > 8 else 0),
+                                "SHOT HIT ONE": format_val(r_data[9] if len(r_data) > 9 else 0),
+                                "ACC% ONE": format_val(r_data[10] if len(r_data) > 10 else 0, is_percentage=True),
+                                "SHOT TWO": format_val(r_data[11] if len(r_data) > 11 else 0),
+                                "SHOT HIT TWO": format_val(r_data[12] if len(r_data) > 12 else 0),
+                                "ACC% TWO": format_val(r_data[13] if len(r_data) > 13 else 0, is_percentage=True)
                             })
     except Exception as e:
         st.warning(f"Error reading dashboard data: {e}")
 
+    # --- RENDER UI: MATCH SUMMARY ---
     st.markdown("<h4 style='color: #93c5fd; font-size: 1rem;'>MATCH SUMMARY</h4>", unsafe_allow_html=True)
     c_grid1, c_grid2, c_grid3 = st.columns(3)
     
     with c_grid1:
-        st.markdown(f"<div class='stat-card'><div class='stat-label'>FIRED</div><div class='stat-value'>{summary_fired}</div></div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='stat-card'><div class='stat-label'>ACCURACY</div><div class='stat-value'>{summary_acc}</div></div>", unsafe_allow_html=True)
         st.markdown(f"<div class='stat-card'><div class='stat-label'>DMG</div><div class='stat-value'>{summary_dmg}</div></div>", unsafe_allow_html=True)
-    with c_grid2:
-        st.markdown(f"<div class='stat-card'><div class='stat-label'>SHOT HIT</div><div class='stat-value'>{summary_hit}</div></div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='stat-card'><div class='stat-label'>KILL</div><div class='stat-value'>{summary_kill}</div></div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='stat-card'><div class='stat-label'>MVP</div><div class='stat-value'>{summary_mvp}</div></div>", unsafe_allow_html=True)
-    with c_grid3:
+        st.markdown(f"<div class='stat-card'><div class='stat-label'>SHOTS FIRED</div><div class='stat-value'>{summary_fired}</div></div>", unsafe_allow_html=True)
         st.markdown(f"<div class='stat-card'><div class='stat-label'>DEATH</div><div class='stat-value'>{summary_death}</div></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='stat-card'><div class='stat-label'>ONEHAND SHOTS</div><div class='stat-value'>{summary_oh_shots}</div></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='stat-card'><div class='stat-label'>TWOHAND SHOTS</div><div class='stat-value'>{summary_th_shots}</div></div>", unsafe_allow_html=True)
+
+    with c_grid2:
+        st.markdown(f"<div class='stat-card'><div class='stat-label'>KILL</div><div class='stat-value'>{summary_kill}</div></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='stat-card'><div class='stat-label'>SHOTS HIT</div><div class='stat-value'>{summary_hit}</div></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='stat-card'><div class='stat-label'>REVIVE</div><div class='stat-value'>{summary_revive}</div></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='stat-card'><div class='stat-label'>ONEHAND HIT</div><div class='stat-value'>{summary_oh_hit}</div></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='stat-card'><div class='stat-label'>TWOHAND HIT</div><div class='stat-value'>{summary_th_hit}</div></div>", unsafe_allow_html=True)
+
+    with c_grid3:
+        st.markdown(f"<div class='stat-card'><div class='stat-label'>MVP</div><div class='stat-value'>{summary_mvp}</div></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='stat-card'><div class='stat-label'>ACCURACY</div><div class='stat-value'>{summary_acc}</div></div>", unsafe_allow_html=True)
         st.markdown(f"<div class='stat-card'><div class='stat-label'>FASTER BANANA</div><div class='stat-value'>{faster_banana_val}</div></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='stat-card'><div class='stat-label'>ONEHAND ACC%</div><div class='stat-value'>{summary_oh_acc}</div></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='stat-card'><div class='stat-label'>TWOHAND ACC%</div><div class='stat-value'>{summary_th_acc}</div></div>", unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    st.markdown("<h4 style='color: #93c5fd; font-size: 1rem;'>DEADLIEST WEAPON</h4>", unsafe_allow_html=True)
-    dw_col1, dw_col2, dw_col3 = st.columns(3)
-    with dw_col1:
-        st.markdown(f"<div class='stat-card'><div class='stat-label'>WEAPON</div><div class='stat-value' style='font-size: 0.85rem;'>{deadliest_w}</div></div>", unsafe_allow_html=True)
-    with dw_col2:
-        st.markdown(f"<div class='stat-card'><div class='stat-label'>DMG</div><div class='stat-value'>{deadliest_d}</div></div>", unsafe_allow_html=True)
-    with dw_col3:
-        st.markdown(f"<div class='stat-card'><div class='stat-label'>ACC%</div><div class='stat-value'>{deadliest_a}</div></div>", unsafe_allow_html=True)
+    # --- RENDER UI: DEADLIEST WEAPONS (1, 2, 3) IN BOXES ---
+    st.markdown("<h4 style='color: #93c5fd; font-size: 1rem;'>DEADLIEST WEAPONS</h4>", unsafe_allow_html=True)
+    
+    for i, dw in enumerate(deadliest_weapons):
+        st.markdown(f"""
+        <div style='background-color: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 15px; margin-bottom: 15px;'>
+            <p style='color: #93c5fd; font-weight: bold; font-size: 1.1rem; margin-top: 0; margin-bottom: 12px; text-align: center;'>
+                Deadliest Weapon {i+1}: {dw['name']}
+            </p>
+        """, unsafe_allow_html=True)
+        
+        # 1ª Riga: DMG e ACC%
+        dw_r1_c1, dw_r1_c2 = st.columns(2)
+        with dw_r1_c1:
+            st.markdown(f"<div class='stat-card'><div class='stat-label'>DMG</div><div class='stat-value'>{dw['dmg']}</div></div>", unsafe_allow_html=True)
+        with dw_r1_c2:
+            st.markdown(f"<div class='stat-card'><div class='stat-label'>ACC%</div><div class='stat-value'>{dw['acc']}</div></div>", unsafe_allow_html=True)
+
+        st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+
+        # 2ª Riga: ONEHAND, SHIT ONEHAND, ACC% ONE
+        dw_r2_c1, dw_r2_c2, dw_r2_c3 = st.columns(3)
+        with dw_r2_c1:
+            st.markdown(f"<div class='stat-card'><div class='stat-label'>ONEHAND</div><div class='stat-value'>{dw['onehand']}</div></div>", unsafe_allow_html=True)
+        with dw_r2_c2:
+            st.markdown(f"<div class='stat-card'><div class='stat-label'>SHIT ONEHAND</div><div class='stat-value'>{dw['shit_onehand']}</div></div>", unsafe_allow_html=True)
+        with dw_r2_c3:
+            st.markdown(f"<div class='stat-card'><div class='stat-label'>ACC% ONE</div><div class='stat-value'>{dw['acc_onehand']}</div></div>", unsafe_allow_html=True)
+
+        st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+
+        # 3ª Riga: TWOHAND, SHIT TWOHAND, ACC% TWO
+        dw_r3_c1, dw_r3_c2, dw_r3_c3 = st.columns(3)
+        with dw_r3_c1:
+            st.markdown(f"<div class='stat-card'><div class='stat-label'>TWOHAND</div><div class='stat-value'>{dw['twohand']}</div></div>", unsafe_allow_html=True)
+        with dw_r3_c2:
+            st.markdown(f"<div class='stat-card'><div class='stat-label'>SHIT TWOHAND</div><div class='stat-value'>{dw['shit_twohand']}</div></div>", unsafe_allow_html=True)
+        with dw_r3_c3:
+            st.markdown(f"<div class='stat-card'><div class='stat-label'>ACC% TWO</div><div class='stat-value'>{dw['acc_twohand']}</div></div>", unsafe_allow_html=True)
+            
+        st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
+    # --- RENDER UI: WEAPON PERFORMANCE TABLE ---
     st.markdown("<h4 style='color: #93c5fd; text-align: center;'>WEAPON PERFORMANCE</h4>", unsafe_allow_html=True)
     
     if weapon_rows_data:
         df_weapons_final = pd.DataFrame(weapon_rows_data)
     else:
-        df_weapons_final = pd.DataFrame(columns=["WEAPON", "TOT SHOTS", "SHOT HIT", "ACC%", "DMG", "HEADSHOT", "MAX DISTANCE"])
+        df_weapons_final = pd.DataFrame(columns=[
+            "WEAPON", "TOT SHOTS", "SHOT HIT", "ACC%", "DMG", "HEADSHOT", "MAX DISTANCE", 
+            "SHOT ONE", "SHOT HIT ONE", "ACC% ONE", "SHOT TWO", "SHOT HIT TWO", "ACC% TWO"
+        ])
 
     st.dataframe(df_weapons_final, use_container_width=True, hide_index=True)
 
